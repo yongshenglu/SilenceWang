@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fff8fb">
+  <title>Silence &amp; You</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-block">
+        <img class="brand-mark" src="assets/brand-logo.jpg" alt="Silence & You 标识">
+        <div>
+          <h1>Silence &amp; You</h1>
+        </div>
+        <div class="title-characters" aria-hidden="true">
+          <img src="assets/title-characters/1.png" alt="">
+          <img src="assets/title-characters/2.png" alt="">
+          <img src="assets/title-characters/3.png" alt="">
+          <img src="assets/title-characters/4.png" alt="">
+          <img src="assets/title-characters/5.png" alt="">
+          <img src="assets/title-characters/6.png" alt="">
+          <img src="assets/title-characters/7.png" alt="">
+          <img src="assets/title-characters/8.png" alt="">
+          <img src="assets/title-characters/9.png" alt="">
+          <img src="assets/title-characters/10.png" alt="">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <nav class="page-tabs" aria-label="账本页面">
+      <button class="tab-button is-active" type="button" data-tab="ledger" aria-selected="true">记账流水</button>
+      <button class="tab-button" type="button" data-tab="search" aria-selected="false">搜索</button>
+      <button class="tab-button" type="button" data-tab="stats" aria-selected="false">消费统计</button>
+      <button class="tab-button" type="button" data-tab="data" aria-selected="false">数据管理</button>
+    </nav>
+
+    <section class="page-panel is-active" data-panel="ledger">
+      <div class="meeting-cards" aria-label="见面日期概览">
+        <article class="meeting-card">
+          <span>距离上次见面</span>
+          <strong id="lastMeetingDays">-- <small>天</small></strong>
+          <time id="lastMeetingDate">暂无</time>
+        </article>
+        <article class="meeting-card">
+          <span>见面次数</span>
+          <strong id="meetingCount">0 <small>次</small></strong>
+          <time>已记录活动</time>
+        </article>
+      </div>
+      <div class="list-meta">
+        <div class="list-meta-summary">
+          <span id="recordCount">共 0 笔记录</span>
+          <span id="filteredNet">全部消费 ¥0.00</span>
+        </div>
+        <button class="primary-button" id="addRecordButton" type="button">＋ 添加消费记录</button>
+      </div>
+      <div class="record-list" id="recordList" aria-live="polite"></div>
+    </section>
+
+    <section class="page-panel" data-panel="search" hidden>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">FIND A MEMORY</p>
+          <h2>搜索流水</h2>
+        </div>
+        <button class="text-button clear-filter-button" id="clearFiltersButton" type="button">清除筛选</button>
+      </div>
+      <form class="filters" id="filterForm">
+        <label class="field">
+          <span>分类</span>
+          <select id="categoryFilter">
+            <option value="">全部分类</option>
+          </select>
+        </label>
+        <label class="field filter-search">
+          <span>搜索内容</span>
+          <input id="searchFilter" type="search" placeholder="活动名称、城市、费用内容或备注">
+        </label>
+        <label class="field">
+          <span>开始日期</span>
+          <input id="startDateFilter" type="date">
+        </label>
+        <label class="field">
+          <span>结束日期</span>
+          <input id="endDateFilter" type="date">
+        </label>
+        <button class="primary-button filter-submit" type="submit">开始搜索</button>
+      </form>
+      <section class="search-results" id="searchResults" hidden>
+        <div class="search-results-heading">
+          <h3>搜索结果</h3>
+          <span id="searchResultCount">共 0 笔记录</span>
+        </div>
+        <div class="record-list" id="searchResultList" aria-live="polite"></div>
+      </section>
+    </section>
+
+    <section class="page-panel" data-panel="stats" hidden>
+      <div class="section-heading stats-heading">
+        <div>
+          <p class="eyebrow">SPENDING REVIEW</p>
+          <h2>消费统计</h2>
+        </div>
+        <p class="stats-scope" id="statsScope">统计范围：全部流水</p>
+      </div>
+
+      <div class="summary-grid">
+        <article class="summary-card expense-card">
+          <span>总支出</span>
+          <strong id="expenseTotal">¥0.00</strong>
+          <small id="expenseCount">0 笔</small>
+        </article>
+      </div>
+
+      <div class="chart-grid">
+        <section class="chart-section">
+          <div class="chart-title">
+            <h3>分类占比</h3>
+            <span>按总支出</span>
+          </div>
+          <div class="pie-chart" id="categoryChart"></div>
+        </section>
+        <section class="chart-section trend-section">
+          <div class="chart-title">
+            <h3>年度统计</h3>
+            <span>按活动开始年份汇总</span>
+          </div>
+          <div class="trend-chart" id="monthlyChart"></div>
+        </section>
+      </section>
+    </section>
+
+    <section class="page-panel" data-panel="data" hidden>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">BACKUP & SETTINGS</p>
+          <h2>数据管理</h2>
+        </div>
+      </div>
+      <div class="data-management-grid">
+        <section class="chart-section">
+          <h3>备份与恢复</h3>
+          <p class="backup-description">需要时可手动备份和恢复数据并导出 CSV。</p>
+          <div class="data-actions">
+            <button class="secondary-button" id="exportJsonButton" type="button">备份 JSON</button>
+            <button class="secondary-button" id="importJsonButton" type="button">恢复备份</button>
+            <button class="secondary-button" id="exportCsvButton" type="button">导出 CSV</button>
+            <input id="importFileInput" type="file" accept="application/json,.json" hidden>
+          </div>
+          <small class="data-file-status" id="dataFileStatus"></small>
+        </section>
+        <section class="chart-section">
+          <h3>分类设置</h3>
+          <p>维护活动费用明细使用的分类项目。</p>
+          <button class="secondary-button" id="manageCategoriesButton" type="button">管理分类</button>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="record-dialog" id="recordDialog">
+    <form class="record-form" id="recordForm" method="dialog" novalidate>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">NEW MEMORY</p>
+          <h2 id="dialogTitle">记一笔开销</h2>
+        </div>
+        <button class="icon-button" id="closeDialogButton" type="button" aria-label="关闭">×</button>
+      </div>
+
+      <input id="recordId" type="hidden">
+
+      <div class="form-grid">
+        <label class="field">
+          <span>日期 *</span>
+          <input id="recordDate" type="date" required>
+        </label>
+        <label class="field full-width">
+          <span>活动名称 *</span>
+          <input id="recordItem" type="text" maxlength="100" placeholder="例如：上海演唱会之旅" required>
+        </label>
+        <label class="field full-width">
+          <span>城市名称</span>
+          <input id="recordCity" type="text" maxlength="50" placeholder="例如：上海">
+        </label>
+        <label class="field full-width">
+          <span>场馆名称</span>
+          <input id="recordVenue" type="text" maxlength="100" placeholder="例如：国家体育场">
+        </label>
+        <div class="expense-items-editor full-width">
+          <div class="items-editor-heading">
+            <div>
+              <span class="field-label">费用明细 *</span>
+              <small>把这次活动的门票、交通、住宿、周边等一起列在这里</small>
+            </div>
+            <strong id="recordTotal">¥0.00</strong>
+          </div>
+          <div class="expense-items-list" id="expenseItemsList"></div>
+          <button class="secondary-button add-expense-item-button" id="addExpenseItemButton" type="button">＋ 添加费用项目</button>
+        </div>
+        <label class="field full-width">
+          <span>备注</span>
+          <textarea id="recordNote" rows="3" maxlength="500" placeholder="可记录场次、订单或同行伙伴"></textarea>
+        </label>
+      </div>
+
+      <p class="form-error" id="formError" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="secondary-button" id="cancelDialogButton" type="button">取消</button>
+        <button class="primary-button" type="submit">保存记录</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="record-dialog category-dialog" id="categoryDialog">
+    <form class="record-form" method="dialog" novalidate>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">CUSTOM CATEGORIES</p>
+          <h2>管理分类</h2>
+        </div>
+        <button class="icon-button" id="closeCategoryButton" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="category-list" id="categoryList" aria-label="现有分类"></div>
+      <label class="field">
+        <span>分类名称</span>
+        <input id="manageCategoryName" type="text" maxlength="30" placeholder="例如：线下活动">
+      </label>
+      <p class="form-error" id="categoryError" role="alert"></p>
+      <div class="dialog-actions category-actions">
+        <button class="primary-button" id="addCategoryButton" type="button">新增分类</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
