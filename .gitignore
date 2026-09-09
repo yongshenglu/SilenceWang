@@ -1,3 +1,32 @@
-data/*
-!data/.gitkeep
+# Local ledger data and backups
+data/
+backups/
+*.db
+*.sqlite
+*.sqlite3
+*.backup.json
+*_backup_*.json
+*备份*.json
 
+# Secrets and machine-local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+secrets*.json
+*.local.json
+
+# Logs, temporary files, and editor metadata
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/
+.cache/
