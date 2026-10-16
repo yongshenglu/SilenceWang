@@ -284,8 +284,8 @@ h1 {
   align-items: end;
 }
 
-.data-management-grid .github-repository,
-.data-management-grid .github-sync-status {
+.data-management-grid .chart-section .github-repository,
+.data-management-grid .chart-section .github-sync-status {
   min-height: 0;
   overflow-wrap: anywhere;
 }
@@ -306,7 +306,7 @@ h1 {
   font-size: 13px;
 }
 
-.github-sync-status[data-error="true"] {
+.data-management-grid .github-sync-status[data-error="true"] {
   color: #a3203e;
 }
 
