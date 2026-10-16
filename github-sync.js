@@ -83,12 +83,12 @@
       requireConnection();
       if (knownSha === undefined) throw new Error("请先从 GitHub 读取账本，再保存；覆盖前可备份本地 JSON。");
       try {
-        await checkRepository();
-        const file = await getFile();
-        if ((file ? file.sha : null) !== knownSha) throw new Error("云端账本已有变化，请先备份本地数据，再从 GitHub 读取。");
         const bytes = new TextEncoder().encode(JSON.stringify(payload, null, 2));
         let binary = "";
         for (const byte of bytes) binary += String.fromCharCode(byte);
+        await checkRepository();
+        const file = await getFile();
+        if ((file ? file.sha : null) !== knownSha) throw new Error("云端账本已有变化，请先备份本地数据，再从 GitHub 读取。");
         const result = await request(fileUrl, {
           method: "PUT",
           body: {

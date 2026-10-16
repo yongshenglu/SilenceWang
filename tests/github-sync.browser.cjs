@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const os = require("node:os");
 const { chromium } = require("playwright");
 
 const root = path.resolve(__dirname, "..");
@@ -174,6 +175,22 @@ test("GitHub sync browser workflows", { timeout: 120000 }, async (t) => {
     assert.equal((await local(page)).records[0].title, "读取期间的本地编辑");
   });
 
+  await t.test("upload keeps its original snapshot and leaves later edits marked unsaved", async () => {
+    const { page, state } = await open();
+    await connect(page);
+    let release;
+    state.pause = new Promise((resolve) => { release = resolve; });
+    const request = page.waitForRequest((request) => request.url().includes("/contents/ledger.json"));
+    await page.locator("#githubSaveButton").click();
+    await request;
+    await rename(page, "上传期间的新活动");
+    release(); state.pause = null;
+    await page.waitForFunction(() => !document.getElementById("githubSaveButton").disabled);
+    assert.equal(state.remote.records[0].title, "本地活动");
+    assert.equal((await local(page)).records[0].title, "上传期间的新活动");
+    assert.match(await status(page), /尚未保存/);
+  });
+
   await t.test("desktop and mobile sync controls fit their section", async () => {
     for (const width of [1280, 390]) {
       const { page, errors } = await open({ width });
@@ -186,6 +203,7 @@ test("GitHub sync browser workflows", { timeout: 120000 }, async (t) => {
       });
       assert.equal(overflow, false, `sync controls overflow at ${width}px`);
       assert.deepEqual(errors, []);
+      await page.screenshot({ path: path.join(os.tmpdir(), `silence-github-sync-${width}.png`), fullPage: true });
     }
   });
 });
