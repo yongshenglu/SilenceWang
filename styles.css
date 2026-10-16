@@ -272,6 +272,50 @@ h1 {
   font-size: 12px;
 }
 
+.github-sync-section {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.github-connection-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.data-management-grid .github-repository,
+.data-management-grid .github-sync-status {
+  min-height: 0;
+  overflow-wrap: anywhere;
+}
+
+.github-token-help {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.github-sync-actions {
+  margin-top: 16px;
+}
+
+.data-management-grid .github-sync-status {
+  margin: 14px 0 0;
+  font-size: 13px;
+}
+
+.github-sync-status[data-error="true"] {
+  color: #a3203e;
+}
+
+.data-management-grid button:disabled {
+  cursor: default;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
 .data-management-grid .secondary-button {
   border: 1px solid var(--pink-dark);
   background: var(--pink);
@@ -1156,6 +1200,10 @@ h1 {
 }
 
 @media (max-width: 480px) {
+  .github-connection-form {
+    grid-template-columns: 1fr;
+  }
+
   .meeting-cards {
     grid-template-columns: 1fr;
   }

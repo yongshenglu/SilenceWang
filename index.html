@@ -143,6 +143,24 @@
         </div>
       </div>
       <div class="data-management-grid">
+        <section class="chart-section github-sync-section" id="githubSyncSection">
+          <h3>GitHub 数据同步</h3>
+          <p class="github-repository">私有仓库：yongshenglu/SilenceWang-Data · ledger.json</p>
+          <form class="github-connection-form" id="githubConnectionForm" autocomplete="off">
+            <label class="field">
+              <span>GitHub 访问令牌</span>
+              <input id="githubToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="输入仅授权数据仓库的细粒度令牌" aria-describedby="githubTokenHelp">
+            </label>
+            <button class="secondary-button" id="githubConnectButton" type="submit">连接 GitHub</button>
+          </form>
+          <small class="github-token-help" id="githubTokenHelp">令牌仅在当前页面内存中使用，关闭或刷新后需重新输入。</small>
+          <div class="data-actions github-sync-actions">
+            <button class="secondary-button" id="githubSaveButton" type="button" disabled>保存到 GitHub</button>
+            <button class="secondary-button" id="githubReadButton" type="button" disabled>从 GitHub 读取</button>
+            <button class="secondary-button" id="githubDisconnectButton" type="button" disabled>断开连接</button>
+          </div>
+          <p class="github-sync-status" id="githubSyncStatus" role="status" aria-live="polite">尚未连接 GitHub，本地记录仍自动保存在浏览器中。</p>
+        </section>
         <section class="chart-section">
           <h3>备份与恢复</h3>
           <p class="backup-description">需要时可手动备份和恢复数据并导出 CSV。</p>
@@ -240,6 +258,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="github-sync.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

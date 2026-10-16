@@ -7,8 +7,13 @@
   const state = { records: [], categories: [], filters: { search: "", startDate: "", endDate: "", category: "" }, selectedCategory: "", hasSearched: false };
   const el = {};
   let toastTimer;
+  const githubSync = createGitHubLedgerSync();
+  let githubBusy = false;
+  let localRevision = 0;
+  let syncedSnapshot = null;
 
   ["addRecordButton", "manageCategoriesButton", "categoryFilter", "searchFilter", "startDateFilter", "endDateFilter", "clearFiltersButton", "filterForm", "recordList", "recordCount", "filteredNet", "searchResults", "searchResultCount", "searchResultList", "lastMeetingDays", "lastMeetingDate", "meetingCount", "statsScope", "expenseTotal", "expenseCount", "categoryChart", "monthlyChart", "recordDialog", "recordForm", "dialogTitle", "recordId", "recordDate", "recordItem", "recordCity", "recordVenue", "expenseItemsList", "addExpenseItemButton", "recordTotal", "recordNote", "formError", "closeDialogButton", "cancelDialogButton", "exportJsonButton", "importJsonButton", "importFileInput", "dataFileStatus", "exportCsvButton", "categoryDialog", "categoryList", "manageCategoryName", "categoryError", "closeCategoryButton", "addCategoryButton", "toast"].forEach((id) => { el[id] = document.getElementById(id); });
+  ["githubConnectionForm", "githubToken", "githubConnectButton", "githubSaveButton", "githubReadButton", "githubDisconnectButton", "githubSyncStatus"].forEach((id) => { el[id] = document.getElementById(id); });
 
   initialize();
 
@@ -54,15 +59,81 @@
     el.categoryList.addEventListener("dragover", (event) => event.preventDefault());
     el.categoryList.addEventListener("drop", handleCategoryDrop);
     el.addCategoryButton.addEventListener("click", addCategory);
+    el.githubConnectionForm.addEventListener("submit", connectGitHub);
+    el.githubSaveButton.addEventListener("click", saveToGitHub);
+    el.githubReadButton.addEventListener("click", readFromGitHub);
+    el.githubDisconnectButton.addEventListener("click", disconnectGitHub);
+    window.addEventListener("pagehide", disconnectGitHub);
   }
 
   function serializeData() { return { schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), categories: state.categories, records: state.records }; }
   function setDataFileStatus(message) { if (el.dataFileStatus) el.dataFileStatus.textContent = message; }
   function parsePayload(payload) { if (!payload || payload.schemaVersion !== SCHEMA_VERSION) return null; const records = Array.isArray(payload.records) ? payload.records.map(migrateRecord).filter(isValidRecord) : null; if (!records) return null; const categories = uniqueCategories([...(Array.isArray(payload.categories) ? payload.categories : DEFAULT_CATEGORIES), ...records.flatMap((record) => record.items.map((item) => item.category))]); return { records, categories: categories.length ? categories : [...DEFAULT_CATEGORIES] }; }
   function loadLocalData() { try { const raw = localStorage.getItem(STORAGE_KEY); if (!raw) return { records: [], categories: [...DEFAULT_CATEGORIES] }; const parsed = JSON.parse(raw); const normalized = parsePayload(Array.isArray(parsed) ? { schemaVersion: SCHEMA_VERSION, records: parsed, categories: DEFAULT_CATEGORIES } : parsed); return normalized || { records: [], categories: [...DEFAULT_CATEGORIES] }; } catch (error) { return { records: [], categories: [...DEFAULT_CATEGORIES] }; } }
-  function persist() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeData())); setDataFileStatus(""); } catch (error) { setDataFileStatus("浏览器保存失败，请检查存储权限"); showToast("数据保存失败"); } }
+  function persist() { localRevision += 1; try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeData())); setDataFileStatus(""); if (githubSync.connected && !githubBusy) setGitHubStatus(dataSnapshot() === syncedSnapshot ? "本地数据与上次同步一致。" : "本地有未保存到 GitHub 的修改。"); } catch (error) { setDataFileStatus("浏览器保存失败，请检查存储权限"); showToast("数据保存失败"); } }
   function exportJson() { download(`追星开销账本_备份_${localDate()}.json`, JSON.stringify(serializeData(), null, 2), "application/json;charset=utf-8"); showToast("JSON 备份已导出"); }
   async function importJson(event) { const file = event.target.files[0]; event.target.value = ""; if (!file) return; let backup; try { backup = JSON.parse(await file.text()); } catch (error) { return showToast("导入失败：文件不是有效的 JSON"); } const records = Array.isArray(backup && backup.records) ? backup.records.map(migrateRecord) : null; if (!backup || backup.schemaVersion !== SCHEMA_VERSION || !records || !records.every(isValidRecord)) return showToast("导入失败：备份格式无效"); if (!window.confirm(`备份中有 ${records.length} 笔活动。导入会覆盖当前浏览器数据，是否继续？`)) return; state.categories = uniqueCategories([...(Array.isArray(backup.categories) ? backup.categories : DEFAULT_CATEGORIES), ...records.flatMap((record) => record.items.map((expense) => expense.category))]); state.records = records; populateCategoryOptions(); clearFilters(); render(); persist(); showToast("备份已恢复到浏览器"); }
+
+  function dataSnapshot() { return JSON.stringify({ categories: state.categories, records: state.records }); }
+  function setGitHubStatus(message, error = false) { el.githubSyncStatus.textContent = message; el.githubSyncStatus.dataset.error = String(error); }
+  function updateGitHubControls() { el.githubToken.disabled = githubBusy || githubSync.connected; el.githubConnectButton.disabled = githubBusy || githubSync.connected; el.githubSaveButton.disabled = githubBusy || !githubSync.connected; el.githubReadButton.disabled = githubBusy || !githubSync.connected; el.githubDisconnectButton.disabled = githubBusy || !githubSync.connected; }
+  async function runGitHubAction(message, action) {
+    if (githubBusy) return;
+    githubBusy = true;
+    updateGitHubControls();
+    setGitHubStatus(message);
+    try { await action(); } catch (error) { setGitHubStatus(error.message, true); } finally { githubBusy = false; updateGitHubControls(); }
+  }
+  async function connectGitHub(event) {
+    event.preventDefault();
+    const token = el.githubToken.value;
+    el.githubToken.value = "";
+    await runGitHubAction("正在连接 GitHub…", async () => {
+      const { exists } = await githubSync.connect(token);
+      syncedSnapshot = null;
+      setGitHubStatus(exists ? "已连接，云端已有账本，请先读取；读取会覆盖本地数据，建议先备份 JSON。" : "已连接，云端尚无账本，可保存当前本地记录。");
+    });
+  }
+  function disconnectGitHub() { githubSync.disconnect(); syncedSnapshot = null; el.githubToken.value = ""; updateGitHubControls(); setGitHubStatus("已断开 GitHub，本地记录仍自动保存在浏览器中。"); }
+  async function saveToGitHub() {
+    await runGitHubAction("正在保存到 GitHub…", async () => {
+      const snapshot = dataSnapshot();
+      await githubSync.write(serializeData());
+      syncedSnapshot = snapshot;
+      const time = new Date().toLocaleString("zh-CN");
+      setGitHubStatus(snapshot === dataSnapshot() ? `已保存到 GitHub · ${time}` : `已保存到 GitHub · ${time}；期间有新的本地修改，尚未保存到 GitHub。`);
+    });
+  }
+  function validateGitHubData(payload) {
+    try {
+      if (!payload || payload.schemaVersion !== SCHEMA_VERSION || !Array.isArray(payload.records) || !Array.isArray(payload.categories) || !payload.categories.length || !payload.categories.every(isValidCategory) || new Set(payload.categories).size !== payload.categories.length) throw new Error();
+      const records = payload.records.map(migrateRecord);
+      if (!records.every(isValidRecord) || new Set(records.map((record) => record.id)).size !== records.length || records.some((record) => !Number.isSafeInteger(record.amountCents) || record.items.some((item) => !Number.isSafeInteger(item.amountCents)))) throw new Error();
+      return { records, categories: uniqueCategories([...payload.categories, ...records.flatMap((record) => record.items.map((item) => item.category))]) };
+    } catch (error) { throw new Error("云端账本格式无效，已保留本地数据。"); }
+  }
+  async function readFromGitHub() {
+    await runGitHubAction("正在从 GitHub 读取…", async () => {
+      const revision = localRevision;
+      const accepted = await githubSync.read((payload) => {
+        const data = validateGitHubData(payload);
+        if (revision !== localRevision) throw new Error("读取期间本地数据已变化，已保留本地修改，请重新读取。");
+        if (!window.confirm(`云端有 ${data.records.length} 笔活动，本地有 ${state.records.length} 笔。读取将覆盖当前浏览器记录及分类顺序，建议先备份 JSON。是否继续？`)) return false;
+        const restored = { schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), ...data };
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(restored)); } catch (error) { throw new Error("浏览器保存失败，已保留原有数据，请先备份 JSON。"); }
+        state.records = data.records;
+        state.categories = data.categories;
+        localRevision += 1;
+        syncedSnapshot = dataSnapshot();
+        setDataFileStatus("");
+        populateCategoryOptions();
+        clearFilters();
+        render();
+        return true;
+      });
+      setGitHubStatus(accepted ? `已从 GitHub 读取 · ${new Date().toLocaleString("zh-CN")}` : "已取消读取，本地数据未改变。");
+    });
+  }
 
   function populateCategoryOptions() {
     const selected = el.categoryFilter.value;
